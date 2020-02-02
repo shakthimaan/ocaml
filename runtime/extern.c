@@ -531,7 +531,7 @@ static void extern_rec(value v)
       if (sz > 1) {
         sp++;
         if (sp >= extern_stack_limit) sp = extern_resize_stack(sp);
-        sp->v = Op_val(v) + 1;
+        sp->v = &Field(v, 0) + 1;
         sp->count = sz-1;
       }
       /* Continue serialization with the first field */
