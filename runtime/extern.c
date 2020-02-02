@@ -374,12 +374,7 @@ static void extern_rec(value v)
       }
       goto next_item;
     }
-    /* Check if already seen */
-    if (extern_flags & NO_SHARING) {
-      output_location = 0;
-    } else {
-      output_location = caml_addrmap_insert_pos(&recorded_objs, v);
-    }
+    output_location = caml_addrmap_insert_pos(&recorded_objs, v);
     if (output_location && *output_location != ADDRMAP_NOT_PRESENT) {
       uintnat d = obj_counter - (uintnat)Long_val(*output_location);
       if (d < 0x100) {
