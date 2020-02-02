@@ -338,7 +338,8 @@ static void extern_rec(value v)
     } else
       writecode32(CODE_INT32, n);
     goto next_item;
-  } else {
+  }
+  if (Is_in_value_area(v) || caml_extern_allow_out_of_heap) {
     header_t hd = Hd_val(v);
     tag_t tag = Tag_hd(hd);
     mlsize_t sz = Wosize_hd(hd);
@@ -347,8 +348,12 @@ static void extern_rec(value v)
     if (tag == Forward_tag) {
       value f = Forward_val (v);
       if (Is_block (f)
-          && (Tag_val (f) == Forward_tag
-              || Tag_val (f) == Lazy_tag || Tag_val (f) == Double_tag)){
+          && (!Is_in_value_area(f) || Tag_val (f) == Forward_tag
+              || Tag_val (f) == Lazy_tag
+#ifdef FLAT_FLOAT_ARRAY
+              || Tag_val (f) == Double_tag
+#endif
+              )){
         /* Do not short-circuit the pointer. */
       }else{
         v = f;
