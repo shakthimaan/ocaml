@@ -119,7 +119,7 @@ static struct extern_item * extern_resize_stack(struct extern_item * sp)
 
 static void extern_record_location(value* loc) {
   if (extern_flags & NO_SHARING) return;
-  Assert(loc);
+  CAMLassert(loc);
   *loc = Val_long(obj_counter++);
 }
 
