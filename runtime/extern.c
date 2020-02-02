@@ -288,7 +288,7 @@ static void writecode16(int code, intnat val)
 {
   if (extern_ptr + 3 > extern_limit) grow_extern_output(3);
   extern_ptr[0] = code;
-  store16(extern_ptr + 1, val);
+  store16(extern_ptr + 1, (int) val);
   extern_ptr += 3;
 }
 
@@ -745,7 +745,7 @@ CAMLexport void caml_output_value_to_malloc(value v, value flags,
   memcpy(res, header, header_len);
   res += header_len;
   for (blk = extern_output_first; blk != NULL; blk = blk->next) {
-    int n = blk->end - blk->data;
+    intnat n = blk->end - blk->data;
     memcpy(res, blk->data, n);
     res += n;
   }
