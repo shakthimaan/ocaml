@@ -316,6 +316,7 @@ int caml_extern_allow_out_of_heap = 0;
 
 static void extern_rec(value v)
 {
+  struct code_fragment * cf;
   struct extern_item * sp;
   sp = extern_stack;
 
@@ -535,7 +536,19 @@ static void extern_rec(value v)
       v = field0;
       continue;
     }
-   }
+    }
+  }
+  else if (caml_find_code_fragment((char*) v, NULL, &cf)) {
+    if ((extern_flags & CLOSURES) == 0)
+      extern_invalid_argument("output_value: functional value");
+    if (! cf->digest_computed) {
+      caml_md5_block(cf->digest, cf->code_start, cf->code_end - cf->code_start);
+      cf->digest_computed = 1;
+    }
+    writecode32(CODE_CODEPOINTER, (char *) v - cf->code_start);
+    writeblock((const char *)cf->digest, 16);
+  } else {
+    extern_invalid_argument("output_value: abstract value (outside heap)");
   }
   next_item:
     /* Pop one more item to marshal, if any */
