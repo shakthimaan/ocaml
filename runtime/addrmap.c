@@ -83,8 +83,6 @@ void caml_addrmap_clear(struct addrmap* t) {
   t->size = 0;
 }
 
-
-
 value* caml_addrmap_insert_pos(struct addrmap* t, value key) {
   uintnat i, pos, old_size;
   struct addrmap_entry* old_table;
