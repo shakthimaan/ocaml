@@ -14,6 +14,8 @@
 /*                                                                        */
 /**************************************************************************/
 
+#define CAML_INTERNALS
+
 #include "caml/config.h"
 #include "caml/memory.h"
 #include "caml/addrmap.h"
