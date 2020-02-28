@@ -19,22 +19,18 @@
 #include "caml/config.h"
 #include "caml/memory.h"
 #include "caml/addrmap.h"
+#include "caml/startup_aux.h"
 
-#define MAX_CHAIN 100
+#define MAX_CHAIN 10
 
 static uintnat pos_initial(struct addrmap* t, value key)
 {
-  uintnat pos = (uintnat)key;
-  pos *= 0xcc9e2d51;
-  pos ^= (pos >> 17);
-
-  CAMLassert(Is_power_of_2(t->size));
-  return pos & (t->size - 1);
+  return key % (t->size);
 }
 
 static uintnat pos_next(struct addrmap* t, uintnat pos)
 {
-  return (pos + 1) & (t->size - 1);
+  return (pos + 1) % (t->size);
 }
 
 int caml_addrmap_contains(struct addrmap* t, value key)
@@ -88,7 +84,7 @@ void caml_addrmap_clear(struct addrmap* t) {
 void caml_addrmap_initialize(struct addrmap *t) {
   if (!t->entries) {
     /* first call, initialise table with a small initial size */
-    addrmap_alloc(t, 1024);
+    addrmap_alloc(t, caml_init_alloc_size);
   }
 }
 
