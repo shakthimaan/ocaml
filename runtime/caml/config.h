@@ -255,6 +255,6 @@ typedef uint64_t uintnat;
 #define Custom_minor_max_bsz_def 8192
 
 /* Default initial size for addrmap hash table: 256 bytes */
-#define Init_addrmap_def 256
+#define Init_addrmap_def 8192
 
 #endif /* CAML_CONFIG_H */
