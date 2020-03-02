@@ -22,15 +22,15 @@
 
 /* Page table management */
 
-#define Page(p) ((uintnat) (p) >> Page_log)
-#define Page_mask ((uintnat) -1 << Page_log)
+#define Page(p) ((uintnat) (p) >> 2)
+/* #define Page_mask ((uintnat) -1 << Page_log) */
 
 /* Page table entries are the logical 'or' of
    - the key: address of a page (low Page_log bits = 0)
    - the data: a 8-bit integer */
 
-#define Page_entry_matches(entry,addr) \
-  ((((entry) ^ (addr)) & Page_mask) == 0)
+/* #define Page_entry_matches(entry,addr) \ */
+/*   ((((entry) ^ (addr)) & Page_mask) == 0) */
 
 /* Multiplicative Fibonacci hashing
    (Knuth, TAOCP vol 3, section 6.4, page 518).
@@ -40,7 +40,7 @@
 #else
 #define HASH_FACTOR 2654435769UL
 #endif
-#define Hash(v,t) (((v) * HASH_FACTOR) >> t->shift)
+#define Hash(key,shift) (((key) * HASH_FACTOR) >> shift)
 
 struct addrmap_entry { value key, value; };
 

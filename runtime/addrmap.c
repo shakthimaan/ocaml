@@ -21,20 +21,27 @@
 #include "caml/addrmap.h"
 #include "caml/startup_aux.h"
 
-int addrmap_page_table_initialize(struct addrmap_page_table *t, mlsize_t bytesize)
+int addrmap_page_table_initialize(struct addrmap_page_table *t, mlsize_t count)
 {
-  uintnat pagesize = Page(bytesize);
+  uintnat pagesize = Page(count * 4);
+  /* uintnat pagesize = bytesize; */
 
   /* printf("pagesize = %ld, HASH_FACTOR = %ld\n", pagesize, HASH_FACTOR); */
+  /* printf("bytesize = %ld, pagesize = %ld, sizeof(uintnat) = %ld\n", count, pagesize, sizeof(uintnat)); */
   t->size = 1;
   t->shift = 8 * sizeof(uintnat);
+  /* printf("Initial: t->shift = %d\n", t->shift); */
   /* Aim for initial load factor between 1/4 and 1/2 */
   while (t->size < 2 * pagesize) {
     t->size <<= 1;
     t->shift -= 1;
+    /* printf("t->size  = %ld\n", t->size); */
+    /* printf("t->shift = %d\n", t->shift); */
   }
   t->mask = t->size - 1;
   t->occupancy = 0;
+
+  /* printf("Final: t->shift = %d, t->size = %ld\n", t->shift, t->size); */
 
   /* Allocate for entries */
   mlsize_t sz = t->size;
@@ -66,16 +73,16 @@ void display_addrmap(struct addrmap_page_table* t)
 
 int addrmap_page_table_resize(struct addrmap_page_table* t)
 {
-  struct addrmap_page_table *old_table = t;
   struct addrmap_entry* new_entries;
-  uintnat i, new_size, h, new_e;
+  uintnat i, h, new_size, new_shift, new_mask;
 
   caml_gc_message (0x08, "Growing page table to %"
                    ARCH_INTNAT_PRINTF_FORMAT "u entries\n",
                    t->size);
 
-  new_size = old_table->size * 2;
-  /* printf("New size = %ld\n", new_size); */
+  new_size = t->size * 2;
+  new_shift = t->shift - 1;
+  new_mask = new_size - 1;
   new_entries = caml_stat_alloc(sizeof(struct addrmap_entry) * new_size);
 
   for (int i = 0; i < new_size; i++) {
@@ -83,24 +90,21 @@ int addrmap_page_table_resize(struct addrmap_page_table* t)
     new_entries[i].value = ADDRMAP_NOT_PRESENT;
   }
 
-  for (i = 0; i < old_table->size; i++) {
-    struct addrmap_entry e = old_table->entries[i];
+  for (i = 0; i < t->size; i++) {
+    struct addrmap_entry e = t->entries[i];
     if (e.key != ADDRMAP_INVALID_KEY) {
-      h = Hash(Page(e.key), t);
+      h = Hash(Page(e.key), new_shift);
 
-      new_e = new_entries[h].key;
-
-      if (new_e == ADDRMAP_INVALID_KEY) {
-        new_entries[h].key   = old_table->entries[i].key;
-        new_entries[h].value = old_table->entries[i].value;
+      if (new_entries[h].key == ADDRMAP_INVALID_KEY) {
+        new_entries[h].key   = t->entries[i].key;
+        new_entries[h].value = t->entries[i].value;
       }
       else {
         while (1) {
-          h = (h + 1) & t->mask;
-          new_e = new_entries[h].key;
-          if (new_e == ADDRMAP_INVALID_KEY) {
-            new_entries[h].key   = old_table->entries[i].key;
-            new_entries[h].value = old_table->entries[i].value;
+          h = (h + 1) & new_mask;
+          if (new_entries[h].key == ADDRMAP_INVALID_KEY) {
+            new_entries[h].key   = t->entries[i].key;
+            new_entries[h].value = t->entries[i].value;
             break;
           }
         }
@@ -109,12 +113,13 @@ int addrmap_page_table_resize(struct addrmap_page_table* t)
   }
 
   t->size = new_size;
-  t->shift = old_table->shift - 1;
-  t->mask = t->size - 1;
-  t->occupancy = old_table->occupancy;
+  t->shift = new_shift;
+  t->mask = new_mask;
 
-  caml_stat_free(old_table->entries);
+  caml_stat_free(t->entries);
   t->entries = new_entries;
+
+  /* printf("  After resize: size = %ld, shift = %d, mask = %ld, occupancy = %ld\n", t->size, t->shift, t->mask, t->occupancy); */
 
   return 0;
 }
@@ -125,7 +130,11 @@ value* addrmap_page_table_lookup(struct addrmap_page_table* t, value key)
 
   /* printf("Initial\n"); */
   /* display_addrmap(t); */
-  h = Hash(Page(key), t);
+  /* printf("Key = %ld\n", key); */
+  h = Hash(Page(key), t->shift);
+  if (h < 0) {
+    printf("h is negative!\n");
+  }
   /* The first hit is almost always successful, so optimize for this case */
   if (t->entries[h].key == ADDRMAP_INVALID_KEY) {
       t->entries[h].key = key;
@@ -154,6 +163,7 @@ value* addrmap_page_table_lookup(struct addrmap_page_table* t, value key)
       /*   display_addrmap(t); */
     }
     if (t->entries[h].key == key) {
+      /* printf("Found and returning!\n"); */
       return &t->entries[h].value;
     }
   }
@@ -182,18 +192,12 @@ value* caml_addrmap_insert_pos(struct addrmap_page_table* t, value key) {
   /* printf("key = %ld\n", key); */
   /* Resize to keep load factor below 1/2 */
   if (t->occupancy * 2 >= t->size) {
-    /* printf("Need to resize!\n"); */
-    /* printf("size = %ld\n", t->size); */
-    /* printf("occupancy = %ld\n", t->occupancy); */
+    /* printf("Need to resize: size = %ld, occupancy = %ld\n", t->size, t->occupancy); */
 
     if (addrmap_page_table_resize(t) != 0) {
       printf("*** Error: Resize failed!\n");
       return NULL;
     }
-
-    /* if (t->size <= 50) { */
-    /*   display_addrmap(t); */
-    /* } */
 
   }
   return addrmap_page_table_lookup(t, key);
