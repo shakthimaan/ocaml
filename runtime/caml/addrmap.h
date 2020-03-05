@@ -20,17 +20,7 @@
 
 #include "mlvalues.h"
 
-/* Page table management */
-
 #define Page(p) ((uintnat) (p) >> 2)
-/* #define Page_mask ((uintnat) -1 << Page_log) */
-
-/* Page table entries are the logical 'or' of
-   - the key: address of a page (low Page_log bits = 0)
-   - the data: a 8-bit integer */
-
-/* #define Page_entry_matches(entry,addr) \ */
-/*   ((((entry) ^ (addr)) & Page_mask) == 0) */
 
 /* Multiplicative Fibonacci hashing
    (Knuth, TAOCP vol 3, section 6.4, page 518).
@@ -43,10 +33,6 @@
 #define Hash(key,shift) (((key) * HASH_FACTOR) >> shift)
 
 struct addrmap_entry { value key, value; };
-
-/* 64-bit implementation:
-   The page table is represented sparsely as a hash table
-   with linear probing */
 
 struct addrmap_page_table {
   mlsize_t size;                   /* size == 1 << (wordsize - shift) */
